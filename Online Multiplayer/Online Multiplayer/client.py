@@ -1,53 +1,217 @@
-import pygame
-Width = 500
-Height = 500
-Window = pygame.display.set_mode((Width,Height))
-pygame.display.set_caption("Client")
-NumOfClients = 0
+import pygame,sys
+import numpy
+import socket
+import threading
+import os
+os.environ['SDL_VIDEO_WINDOW_POS']='850,100'
+def create_thread(target):
+    thread = threading.Thread(target=target)
+    thread.daemon = True
+    thread.start()
 
-class User():
-    def __init__(self, X,Y,Width,Height,Color):
-        self.x = X
-        self.y = Y
-        self.Width = Width
-        self.Height= Height
-        self.Color = Color
-        self.Rectangle = (X,Y,Width,Height)
-        self.vel = 3
+pygame.init()
+ROW = 3
+COLUMN =3
+#display settings
+WIDTH = 800
+HEIGHT = WIDTH
+ConstSize = WIDTH//COLUMN
+ConstSize2 = ConstSize * 2
+remainder =  ConstSize//2
+#Circle properties
+CRadius = ConstSize//3
+CWidth = 15
+CColor = (239,231,200)
+#Cross
+CrossWidth = 25
+CrossSpace = ConstSize//4
+CrossColor = (66,66,66)
+# Colors
+RED = (255,0,0)
+BG = (28,170,156)
+#Line Properties
+LCOLOR = (23,145,135)
+LWIDTH=15
+GameOver = False
+Window = pygame.display.set_mode((WIDTH,HEIGHT))
+pygame.display.set_caption("TIC TAC TOE")
+HOST = '127.0.0.1'
+PORT = 65432
+ConnectionMade = False
+Conn,Addr = None,None
+Socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+Socket.connect((HOST,PORT))
+def ReceivedData():
+    global turn
+    while True:
+        data = Socket.recv(1024).decode()
+        data = data.split('-')
+        x,y = int(data[0]),int(data[1])
+        if data[2]=='yourturn':
+            turn = True
+        if data[3] == 'False':
+            GameOver=True
+        if FreeSpace(x,y) == 0:
+            MarkSquare(x,y,2)
+        print(data)
 
-    def Draw(self,Window):
-        pygame.draw.rect(Window,self.Color,self.Rectangle)
+#def WaitingforConnection():
+#    global ConnectionMade, Conn,Addr
+#    Conn,Addr = Socket.accept()
+#    print("client is connected")
+#    ConnectionMade= True
+#    ReceivedData()
+#Socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+create_thread(ReceivedData)
+#Conn,Addr = Socket.accept()
+turn = False
+playing = 'True'
+User = 1
+Window.fill(BG)
+Board = numpy.zeros((ROW,COLUMN))
 
-    def Move(self):
-        Input = pygame.key.get_pressed()
-        if Input[pygame.K_LEFT]:
-            self.x -=self.vel
 
-        elif Input[pygame.K_RIGHT]:
-            self.x += self.vel
 
-        elif Input[pygame.K_UP]:
-            self.y -= self.vel
+#pygame.draw.line(Window,RED,(10,10),(300,300),10)
+def DrawLines():
+    pygame.draw.line(Window,LCOLOR,(0,ConstSize),(WIDTH,ConstSize),LWIDTH)
+    pygame.draw.line(Window,LCOLOR,(0,ConstSize2),(WIDTH,ConstSize2),LWIDTH)
+    pygame.draw.line(Window,LCOLOR,(ConstSize,0),(ConstSize,HEIGHT),LWIDTH)
+    pygame.draw.line(Window,LCOLOR,(ConstSize2,0),(ConstSize2,HEIGHT),LWIDTH)
+def FreeSpace(row,col):
+    if Board[row,col]==0:
+        return True
+    else:
+        return False
+def DrawObjects():
 
-        elif Input[pygame.K_DOWN]:
-            self.y += self.vel
-        self.Rectangle = (self.x,self.y,self.Width,self.Height)
+    for Rows in range(ROW):
+        for Colums in range(COLUMN):
+            if Board[Rows][Colums] ==1:
+                pygame.draw.circle(Window,CColor,(int(Colums * ConstSize +remainder), int(Rows * ConstSize+remainder)), CRadius,CWidth)
+            elif Board[Rows][Colums] ==2:
+                pygame.draw.line(Window,CrossColor,(Colums * ConstSize + CrossSpace, Rows * ConstSize + ConstSize - CrossSpace), (Colums * ConstSize + ConstSize - CrossSpace, Rows * ConstSize + CrossSpace), CWidth)
+                pygame.draw.line(Window,CrossColor,(Colums * ConstSize + CrossSpace, Rows * ConstSize + CrossSpace), (Colums * ConstSize + ConstSize - CrossSpace, Rows * ConstSize + ConstSize - CrossSpace), CWidth)
 
-def RedrawWindow(Window,User):
-    Window.fill((255,255,255))
-    User.Draw(Window)
-    pygame.display.update()
+def MarkSquare(Row,Col,User):
+    Board[Row][Col] = User
 
-def main():
-    Run = True
-    User1 = User(50,50,100,100,(0,255,0))
+    #check if it is full
+def CheckBoard():
+    for Rows in range(ROW):
+        for Columns in range(COLUMN):
+            if Board[Rows][Columns] ==0:
+                return False
+    return True
+def CheckIfWinner(User):
+    for row in range(ROW):
+        if Board[row][0] == User and Board[row][1] ==User and Board[row][2] ==User:
+            DrawWinningHorizontalLine(Column,User)
+            return True
+    for Column in range(COLUMN):
+        if Board[0][Column] == User and Board[1][Column] ==User and Board[2][Column] ==User:
+            DrawWinningVerticalLine(Column,User)
+            return True
+    if Board[0][0] == User and Board[1][1] == User and Board[2][2] == User:
+        drawDescendingDiagonal(User)
+        return True
+    elif Board[2][0] == User and Board[1][1] == User and Board[0][2] == User:
+        drawAscendingDiagonal(User)
+        return True
+   
+    return False
+
+def DrawWinningVerticalLine(Column,User):
+    X = Column * ConstSize + remainder
+    if User == 1:
+        color = CColor
+    elif User == 2:
+        color = CrossColor
+    pygame.draw.line(Window,color,(X ,15),(X,HEIGHT -15),15)
     
+def DrawWinningHorizontalLine(Column,User):
+    Y = Column * ConstSize + remainder
+    if User == 1:
+        color = CColor
+    elif User == 2:
+        color = CrossColor
+    pygame.draw.line(Window,color,(15 ,Y),(WIDTH-15,Y),15)
 
-    while Run:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                Run = False
-                pygame.quit()
-        User1.Move()
-        RedrawWindow(Window,User1)
-main()
+def drawAscendingDiagonal(User):
+    if User == 1:
+        color = CColor
+    elif User == 2:
+        color = CrossColor
+    pygame.draw.line(Window,color,(15,HEIGHT-15),(WIDTH-15,15),15)
+
+
+def drawDescendingDiagonal(User):
+    if User == 1:
+        color = CColor
+    elif User == 2:
+        color = CrossColor
+    pygame.draw.line(Window,color,(15,15),(WIDTH-15,HEIGHT -15),15)
+
+def restartGame():
+    Window.fill(BG)
+    DrawLines()
+    User = 1
+    for r in range(ROW):
+        for c in range(COLUMN):
+            Board[r][c]=0
+
+
+#print(CheckBoard())
+#for row in range(ROW):
+#    for col in range(COLUMN):
+#        if Board[row][col] ==0:
+#            MarkSquare(row,col,1)
+#print(CheckBoard())
+
+DrawLines()
+running = True
+while running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.display.quit()
+        if event.type == pygame.MOUSEBUTTONDOWN and not GameOver:
+            if turn and not GameOver:
+                XAxis = event.pos[0]
+                YAxis = event.pos[1]
+                #ClickRow and column
+                CRow =int( YAxis//ConstSize)
+                CCol=int(XAxis//ConstSize)
+                if FreeSpace(CRow,CCol):
+                    MarkSquare(CRow,CCol,2)
+                    if CheckIfWinner(User):
+                        GameOver = True
+                if GameOver:
+                    playing = 'False'
+                try:
+                    send_data = '{}-{}-{}-{}'.format(CCol,CRow,'yourturn',playing).encode()
+                    Socket.send(send_data)
+                    turn = False
+                except:
+                    pass
+            #if FreeSpace(CRow,CCol):
+            #    if User ==1:
+            #        MarkSquare(CRow,CCol,1)
+            #        if CheckIfWinner(User):
+            #            GameOver = True
+            #        User = 2 
+            #    elif User ==2:
+            #        MarkSquare(CRow,CCol,2)
+            #        if CheckIfWinner(User):
+            #            GameOver = True
+            #        User = 1
+                DrawObjects()
+        if event.type==pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:
+                restartGame()
+                GameOver = False
+                playing = 'True'
+        if event.type==pygame.KEYDOWN:
+            if event.key == pygame.K_q:
+                running = False
+                print("Goodbye")
+    pygame.display.update()
