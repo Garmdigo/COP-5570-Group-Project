@@ -126,16 +126,19 @@ playing = 'True'
 def ReceivedData():
     global turn
     while True:
-        data = Conn.recv(1024).decode()
-        data = data.split('-')
-        x,y = int(data[0]),int(data[1])
-        if data[2]=='yourturn':
-            turn = True
-        if data[3] == 'False':
-            GameOver=True
-        if FreeSpace(x,y) == 0:
-            MarkSquare(x,y,1)
-        print(data)
+        try:
+            data = Conn.recv(1024).decode()
+            data = data.split('-')
+            x,y = int(data[0]),int(data[1])
+            if data[2]=='yourturn':
+                turn = True
+            if data[3] == 'False':
+                GameOver=True
+            if FreeSpace(x,y):
+                MarkSquare(x,y,1)
+            print(data)
+        except:
+            print("Error in Server")
 
 def WaitingforConnection():
     global ConnectionMade, Conn,Addr
