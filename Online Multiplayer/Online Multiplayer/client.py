@@ -3,6 +3,7 @@ import numpy
 import socket
 import threading
 import os
+
 os.environ['SDL_VIDEO_WINDOW_POS']='850,100'
 def create_thread(target):
     thread = threading.Thread(target=target)
@@ -47,13 +48,14 @@ def ReceivedData():
         try:
             data = Socket.recv(1024).decode()
             data = data.split('-')
-            x,y = int(data[0]),int(data[1])
+            y,x = int(data[0]),int(data[1])
             if data[2]=='yourturn':
                 turn = True
             if data[3] == 'False':
                 GameOver=True
             if FreeSpace(x,y):
-                MarkSquare(x,y,2)
+                MarkSquare(x,y,1)
+                DrawObjects()
             print(data)
         except:
             print("Error in client")
@@ -69,7 +71,7 @@ create_thread(ReceivedData)
 #Conn,Addr = Socket.accept()
 turn = False
 playing = 'True'
-User = 1
+User = 2
 Window.fill(BG)
 Board = numpy.zeros((ROW,COLUMN))
 
@@ -121,7 +123,7 @@ def CheckIfWinner(User):
     elif Board[2][0] == User and Board[1][1] == User and Board[0][2] == User:
         drawAscendingDiagonal(User)
         return True
-   
+
     return False
 
 def DrawWinningVerticalLine(Column,User):
@@ -131,7 +133,7 @@ def DrawWinningVerticalLine(Column,User):
     elif User == 2:
         color = CrossColor
     pygame.draw.line(Window,color,(X ,15),(X,HEIGHT -15),15)
-    
+
 def DrawWinningHorizontalLine(Column,User):
     Y = Column * ConstSize + remainder
     if User == 1:
@@ -201,7 +203,7 @@ while running:
             #        MarkSquare(CRow,CCol,1)
             #        if CheckIfWinner(User):
             #            GameOver = True
-            #        User = 2 
+            #        User = 2
             #    elif User ==2:
             #        MarkSquare(CRow,CCol,2)
             #        if CheckIfWinner(User):
