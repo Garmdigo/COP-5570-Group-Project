@@ -3,14 +3,24 @@ import numpy
 import socket
 import threading
 import os
-
+import pygame.freetype
+import time
+from pygame.sprite import Sprite
+from pygame.rect import Rect
 os.environ['SDL_VIDEO_WINDOW_POS']='850,100'
+# Colors
+BG = (102, 102, 255)
+
 def create_thread(target):
     thread = threading.Thread(target=target)
     thread.daemon = True
     thread.start()
 
+
+
 pygame.init()
+
+#dimensions
 ROW = 3
 COLUMN =3
 #display settings
@@ -26,16 +36,16 @@ CColor = (239,231,200)
 #Cross
 CrossWidth = 25
 CrossSpace = ConstSize//4
-CrossColor = (66,66,66)
-# Colors
-RED = (255,0,0)
-BG = (28,170,156)
+CrossColor = (31, 46, 46)
+
 #Line Properties
-LCOLOR = (23,145,135)
+LCOLOR = (128, 32, 0)
 LWIDTH=15
 GameOver = False
+#socket setup
+title = "TIC TAC TOE"
 Window = pygame.display.set_mode((WIDTH,HEIGHT))
-pygame.display.set_caption("TIC TAC TOE")
+pygame.display.set_caption(title)
 HOST = '127.0.0.1'
 PORT = 65432
 ConnectionMade = False
@@ -49,7 +59,7 @@ def ReceivedData():
             data = Socket.recv(1024).decode()
             data = data.split('-')
             y,x = int(data[0]),int(data[1])
-            if data[2]=='yourturn':
+            if data[2]=='switch':
                 turn = True
             if data[3] == 'False':
                 GameOver=True
@@ -59,14 +69,9 @@ def ReceivedData():
             print(data)
         except:
             print("Error in client")
+            print("Error: Press the top right Exit command")
+            time.sleep(2)
 
-#def WaitingforConnection():
-#    global ConnectionMade, Conn,Addr
-#    Conn,Addr = Socket.accept()
-#    print("client is connected")
-#    ConnectionMade= True
-#    ReceivedData()
-#Socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
 create_thread(ReceivedData)
 #Conn,Addr = Socket.accept()
 turn = False
@@ -76,45 +81,59 @@ Window.fill(BG)
 Board = numpy.zeros((ROW,COLUMN))
 
 
-
-#pygame.draw.line(Window,RED,(10,10),(300,300),10)
+# drawing grid
 def DrawLines():
-    pygame.draw.line(Window,LCOLOR,(0,ConstSize),(WIDTH,ConstSize),LWIDTH)
-    pygame.draw.line(Window,LCOLOR,(0,ConstSize2),(WIDTH,ConstSize2),LWIDTH)
-    pygame.draw.line(Window,LCOLOR,(ConstSize,0),(ConstSize,HEIGHT),LWIDTH)
-    pygame.draw.line(Window,LCOLOR,(ConstSize2,0),(ConstSize2,HEIGHT),LWIDTH)
+    ConstVal = 0 
+    pygame.draw.line(Window,LCOLOR,(ConstVal,ConstSize),(WIDTH,ConstSize),LWIDTH)
+    pygame.draw.line(Window,LCOLOR,(ConstVal,ConstSize2),(WIDTH,ConstSize2),LWIDTH)
+    pygame.draw.line(Window,LCOLOR,(ConstSize,ConstVal),(ConstSize,HEIGHT),LWIDTH)
+    pygame.draw.line(Window,LCOLOR,(ConstSize2,ConstVal),(ConstSize2,HEIGHT),LWIDTH)
+
+#check if the space selected is free.
 def FreeSpace(row,col):
-    if Board[row,col]==0:
+    empty = 0
+    if Board[row,col]==empty:
         return True
     else:
         return False
 def DrawObjects():
 
     for Rows in range(ROW):
+        User1 = 1
+        User2 = 2
         for Colums in range(COLUMN):
-            if Board[Rows][Colums] ==1:
-                pygame.draw.circle(Window,CColor,(int(Colums * ConstSize +remainder), int(Rows * ConstSize+remainder)), CRadius,CWidth)
-            elif Board[Rows][Colums] ==2:
-                pygame.draw.line(Window,CrossColor,(Colums * ConstSize + CrossSpace, Rows * ConstSize + ConstSize - CrossSpace), (Colums * ConstSize + ConstSize - CrossSpace, Rows * ConstSize + CrossSpace), CWidth)
-                pygame.draw.line(Window,CrossColor,(Colums * ConstSize + CrossSpace, Rows * ConstSize + CrossSpace), (Colums * ConstSize + ConstSize - CrossSpace, Rows * ConstSize + ConstSize - CrossSpace), CWidth)
+            MathEq = Colums * ConstSize + CrossSpace
+            MathEq2 =Rows * ConstSize + ConstSize - CrossSpace
+            MathEq3 = Colums * ConstSize + ConstSize - CrossSpace
+            MathEq4=Rows * ConstSize + CrossSpace
+            if Board[Rows][Colums] ==User2:
+                pygame.draw.line(Window,CrossColor,(MathEq, MathEq2), (MathEq3, MathEq4), CWidth)
+                pygame.draw.line(Window,CrossColor,(MathEq, MathEq4), (MathEq3, MathEq2), CWidth)
+            elif Board[Rows][Colums] ==User1:
+                MathEq5 = Colums * ConstSize +remainder
+                MathEq6=Rows * ConstSize+remainder
+                pygame.draw.circle(Window,CColor,(int(MathEq5), int(MathEq6)), CRadius,CWidth)          
 
 def MarkSquare(Row,Col,User):
     Board[Row][Col] = User
 
     #check if it is full
 def CheckBoard():
+    empty = 0
     for Rows in range(ROW):
         for Columns in range(COLUMN):
-            if Board[Rows][Columns] ==0:
+            if Board[Rows][Columns] ==empty:
                 return False
     return True
 def CheckIfWinner(User):
     for row in range(ROW):
-        if Board[row][0] == User and Board[row][1] ==User and Board[row][2] ==User:
-            DrawWinningHorizontalLine(Column,User)
+        MathEq1 = Board[row][0] == User and Board[row][1] ==User and Board[row][2] ==User
+        if MathEq1:
+            DrawWinningHorizontalLine(row,User)
             return True
     for Column in range(COLUMN):
-        if Board[0][Column] == User and Board[1][Column] ==User and Board[2][Column] ==User:
+        MathEq2=Board[0][Column] == User and Board[1][Column] ==User and Board[2][Column] ==User
+        if MathEq2:
             DrawWinningVerticalLine(Column,User)
             return True
     if Board[0][0] == User and Board[1][1] == User and Board[2][2] == User:
@@ -128,34 +147,53 @@ def CheckIfWinner(User):
 
 def DrawWinningVerticalLine(Column,User):
     X = Column * ConstSize + remainder
-    if User == 1:
+    Player1 = 1
+    Player2 = 2
+    Space = 15
+
+    HEIGHTDIFF = HEIGHT - Space
+    if User == Player1:
         color = CColor
-    elif User == 2:
+    elif User == Player2:
         color = CrossColor
-    pygame.draw.line(Window,color,(X ,15),(X,HEIGHT -15),15)
+    pygame.draw.line(Window,color,(X ,Space),(X,HEIGHTDIFF),Space)
 
 def DrawWinningHorizontalLine(Column,User):
     Y = Column * ConstSize + remainder
+    Player1 = 1
+    Player2 = 2
+    Space = 15
+    WIDTHDIFF = WIDTH - Space
     if User == 1:
         color = CColor
     elif User == 2:
         color = CrossColor
-    pygame.draw.line(Window,color,(15 ,Y),(WIDTH-15,Y),15)
+    pygame.draw.line(Window,color,(Space ,Y),(WIDTHDIFF,Y),Space)
 
 def drawAscendingDiagonal(User):
-    if User == 1:
+    Player1 = 1
+    Player2 = 2
+    WIDTHDIFF = WIDTH - 15
+    HEIGHTDIFF = HEIGHT - 15
+    Space = 15
+    if User == Player1:
         color = CColor
-    elif User == 2:
+    elif User == Player2:
         color = CrossColor
-    pygame.draw.line(Window,color,(15,HEIGHT-15),(WIDTH-15,15),15)
+    pygame.draw.line(Window,color,(Space,HEIGHTDIFF),(WIDTHDIFF,Space),Space)
 
 
 def drawDescendingDiagonal(User):
-    if User == 1:
+    Player1 = 1
+    Player2 = 2
+    Space = 15
+    WIDTHDIFF = WIDTH - Space
+    HEIGHTDIFF = HEIGHT - Space
+    if User == Player1:
         color = CColor
-    elif User == 2:
+    elif User == Player2:
         color = CrossColor
-    pygame.draw.line(Window,color,(15,15),(WIDTH-15,HEIGHT -15),15)
+    pygame.draw.line(Window,color,(Space,Space),(WIDTHDIFF,HEIGHTDIFF),Space)
 
 def restartGame():
     Window.fill(BG)
@@ -166,12 +204,7 @@ def restartGame():
             Board[r][c]=0
 
 
-#print(CheckBoard())
-#for row in range(ROW):
-#    for col in range(COLUMN):
-#        if Board[row][col] ==0:
-#            MarkSquare(row,col,1)
-#print(CheckBoard())
+
 
 DrawLines()
 running = True
@@ -193,22 +226,11 @@ while running:
                 if GameOver:
                     playing = 'False'
                 try:
-                    send_data = '{}-{}-{}-{}'.format(CCol,CRow,'yourturn',playing).encode()
+                    send_data = '{}-{}-{}-{}'.format(CCol,CRow,'switch',playing).encode()
                     Socket.send(send_data)
                     turn = False
                 except:
                     pass
-            #if FreeSpace(CRow,CCol):
-            #    if User ==1:
-            #        MarkSquare(CRow,CCol,1)
-            #        if CheckIfWinner(User):
-            #            GameOver = True
-            #        User = 2
-            #    elif User ==2:
-            #        MarkSquare(CRow,CCol,2)
-            #        if CheckIfWinner(User):
-            #            GameOver = True
-            #        User = 1
                 DrawObjects()
         if event.type==pygame.KEYDOWN:
             if event.key == pygame.K_SPACE:
@@ -220,3 +242,4 @@ while running:
                 running = False
                 print("Goodbye")
     pygame.display.update()
+exit(0)
